@@ -6,6 +6,23 @@ from torch.nn import functional as F
 import warnings
 warnings.filterwarnings("ignore")
 
+
+# -----------------------------------
+INTERMEDIATE_DIR = 'E:\\4_GithubProjects\\fps-webcam-demo\\intermediate_images'
+if not os.path.exists(INTERMEDIATE_DIR):
+    os.mkdir(INTERMEDIATE_DIR)
+
+
+CAM_STREAM_DIR = 'E:\\4_GithubProjects\\fps-webcam-demo\\cam_stream'
+ECCV_DIR = 'E:\\4_GithubProjects\\fps-webcam-demo\\ECCV2022-RIFE'
+
+
+start_ind = 0
+end_ind = 1
+# -----------------------------------
+
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_grad_enabled(False)
 if torch.cuda.is_available():
@@ -67,45 +84,59 @@ img0 = F.pad(img0, padding)
 img1 = F.pad(img1, padding)
 
 
-if args.ratio:
-    img_list = [img0]
-    img0_ratio = 0.0
-    img1_ratio = 1.0
-    if args.ratio <= img0_ratio + args.rthreshold / 2:
-        middle = img0
-    elif args.ratio >= img1_ratio - args.rthreshold / 2:
-        middle = img1
-    else:
-        tmp_img0 = img0
-        tmp_img1 = img1
-        for inference_cycle in range(args.rmaxcycles):
-            middle = model.inference(tmp_img0, tmp_img1)
-            middle_ratio = ( img0_ratio + img1_ratio ) / 2
-            if args.ratio - (args.rthreshold / 2) <= middle_ratio <= args.ratio + (args.rthreshold / 2):
-                break
-            if args.ratio > middle_ratio:
-                tmp_img0 = middle
-                img0_ratio = middle_ratio
-            else:
-                tmp_img1 = middle
-                img1_ratio = middle_ratio
-    img_list.append(middle)
-    img_list.append(img1)
-else:
-    img_list = [img0, img1]
-    for i in range(args.exp):
-        tmp = []
-        for j in range(len(img_list) - 1):
-            mid = model.inference(img_list[j], img_list[j + 1])
-            tmp.append(img_list[j])
-            tmp.append(mid)
-        tmp.append(img1)
-        img_list = tmp
+# In our case, we are always reading in 2 images, and producing 1 in the mid
+# (when exp == 1)
 
-if not os.path.exists('output'):
-    os.mkdir('output')
-for i in range(len(img_list)):
-    if args.img[0].endswith('.exr') and args.img[1].endswith('.exr'):
-        cv2.imwrite('output/img{}.exr'.format(i), (img_list[i][0]).cpu().numpy().transpose(1, 2, 0)[:h, :w], [cv2.IMWRITE_EXR_TYPE, cv2.IMWRITE_EXR_TYPE_HALF])
-    else:
-        cv2.imwrite('output/img{}.png'.format(i), (img_list[i][0] * 255).byte().cpu().numpy().transpose(1, 2, 0)[:h, :w])
+
+
+
+img_list = [img0, img1]
+tmp = []
+mid = model.inference(img_list[0], img_list[1])
+cv2.imwrite(
+    f'{INTERMEDIATE_DIR}\\img{i}.png'
+    (mid[0] * 255).byte().cpu().numpy().transpose(1, 2, 0)[:h, :w]
+)
+
+# if args.ratio:
+#     img_list = [img0]
+#     img0_ratio = 0.0
+#     img1_ratio = 1.0
+#     if args.ratio <= img0_ratio + args.rthreshold / 2:
+#         middle = img0
+#     elif args.ratio >= img1_ratio - args.rthreshold / 2:
+#         middle = img1
+#     else:
+#         tmp_img0 = img0
+#         tmp_img1 = img1
+#         for inference_cycle in range(args.rmaxcycles):
+#             middle = model.inference(tmp_img0, tmp_img1)
+#             middle_ratio = ( img0_ratio + img1_ratio ) / 2
+#             if args.ratio - (args.rthreshold / 2) <= middle_ratio <= args.ratio + (args.rthreshold / 2):
+#                 break
+#             if args.ratio > middle_ratio:
+#                 tmp_img0 = middle
+#                 img0_ratio = middle_ratio
+#             else:
+#                 tmp_img1 = middle
+#                 img1_ratio = middle_ratio
+#     img_list.append(middle)
+#     img_list.append(img1)
+# else:
+#     img_list = [img0, img1]
+#     for i in range(args.exp):
+#         tmp = []
+#         for j in range(len(img_list) - 1):
+#             mid = model.inference(img_list[j], img_list[j + 1])
+#             tmp.append(img_list[j])
+#             tmp.append(mid)
+#         tmp.append(img1)
+#         img_list = tmp
+
+# if not os.path.exists('output'):
+#     os.mkdir('output')
+# for i in range(len(img_list)):
+#     if args.img[0].endswith('.exr') and args.img[1].endswith('.exr'):
+#         cv2.imwrite('output/img{}.exr'.format(i), (img_list[i][0]).cpu().numpy().transpose(1, 2, 0)[:h, :w], [cv2.IMWRITE_EXR_TYPE, cv2.IMWRITE_EXR_TYPE_HALF])
+#     else:
+#         cv2.imwrite('output/img{}.png'.format(i), (img_list[i][0] * 255).byte().cpu().numpy().transpose(1, 2, 0)[:h, :w])
